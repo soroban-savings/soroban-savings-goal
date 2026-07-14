@@ -56,6 +56,22 @@ impl SavingsGoalContract {
             .unwrap_or(0)
     }
 
+    pub fn get_remaining_to_target(env: Env) -> i128 {
+        let target: i128 = env
+            .storage()
+            .instance()
+            .get(&DataKey::Target)
+            .unwrap_or(0);
+
+        let balance: i128 = env
+            .storage()
+            .instance()
+            .get(&DataKey::Balance)
+            .unwrap_or(0);
+
+        target.saturating_sub(balance)
+    }
+
     pub fn withdraw(env: Env) -> i128 {
 
         let target: i128 = env

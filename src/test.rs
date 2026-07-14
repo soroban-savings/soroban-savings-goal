@@ -22,6 +22,7 @@ fn test_goal_flow() {
 
     assert_eq!(client.get_balance(), 1000);
     assert_eq!(client.get_target(), 1000);
+    assert_eq!(client.get_remaining_to_target(), 0);
 
     let withdrawn = client.withdraw();
 
