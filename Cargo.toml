@@ -2,6 +2,8 @@
 name = "savings-goal"
 version = "0.1.0"
 edition = "2021"
+description = "A simple Soroban savings goal contract"
+repository = "https://github.com/soroban-savings/soroban-savings-goal"
 
 [lib]
 crate-type = ["cdylib"]
