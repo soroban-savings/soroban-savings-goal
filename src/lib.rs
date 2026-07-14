@@ -18,11 +18,19 @@ pub struct SavingsGoalContract;
 impl SavingsGoalContract {
 
     pub fn create_goal(env: Env, target: i128) {
+        if target <= 0 {
+            panic!("target must be positive");
+        }
+
         env.storage().instance().set(&DataKey::Target, &target);
         env.storage().instance().set(&DataKey::Balance, &0i128);
     }
 
     pub fn deposit(env: Env, amount: i128) {
+        if amount <= 0 {
+            panic!("deposit amount must be positive");
+        }
+
         let balance: i128 = env
             .storage()
             .instance()
