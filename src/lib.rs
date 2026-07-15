@@ -1,9 +1,21 @@
 #![no_std]
 
 use soroban_sdk::{
-    contract, contractimpl, contracttype,
-    Env, Symbol
+    contract, contracterror, contractimpl, contracttype,
+    Env,
 };
+
+#[contracterror]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[repr(u32)]
+pub enum Error {
+    InvalidTarget = 1,
+    InvalidAmount = 2,
+    TargetNotReached = 3,
+    GoalAlreadyExists = 4,
+    GoalNotFound = 5,
+    Unauthorized = 6,
+}
 
 #[contracttype]
 pub enum DataKey {
@@ -17,18 +29,20 @@ pub struct SavingsGoalContract;
 #[contractimpl]
 impl SavingsGoalContract {
 
-    pub fn create_goal(env: Env, target: i128) {
+    pub fn create_goal(env: Env, target: i128) -> Result<(), Error> {
         if target <= 0 {
-            panic!("target must be positive");
+            return Err(Error::InvalidTarget);
         }
 
         env.storage().instance().set(&DataKey::Target, &target);
         env.storage().instance().set(&DataKey::Balance, &0i128);
+
+        Ok(())
     }
 
-    pub fn deposit(env: Env, amount: i128) {
+    pub fn deposit(env: Env, amount: i128) -> Result<(), Error> {
         if amount <= 0 {
-            panic!("deposit amount must be positive");
+            return Err(Error::InvalidAmount);
         }
 
         let balance: i128 = env
@@ -40,6 +54,8 @@ impl SavingsGoalContract {
         env.storage()
             .instance()
             .set(&DataKey::Balance, &(balance + amount));
+
+        Ok(())
     }
 
     pub fn get_balance(env: Env) -> i128 {
@@ -72,24 +88,7 @@ impl SavingsGoalContract {
         target.saturating_sub(balance)
     }
 
-    pub fn increase_target(env: Env, additional: i128) {
-        if additional <= 0 {
-            panic!("additional must be positive");
-        }
-
-        let target: i128 = env
-            .storage()
-            .instance()
-            .get(&DataKey::Target)
-            .unwrap_or(0);
-
-        env.storage()
-            .instance()
-            .set(&DataKey::Target, &(target + additional));
-    }
-
-    pub fn withdraw(env: Env) -> i128 {
-
+    pub fn withdraw(env: Env) -> Result<i128, Error> {
         let target: i128 = env
             .storage()
             .instance()
@@ -103,14 +102,15 @@ impl SavingsGoalContract {
             .unwrap_or(0);
 
         if balance < target {
-            panic!("Target not reached");
+            return Err(Error::TargetNotReached);
         }
 
         env.storage()
             .instance()
             .set(&DataKey::Balance, &0i128);
 
-        balance
+        Ok(balance)
     }
 }
+
 mod test;
