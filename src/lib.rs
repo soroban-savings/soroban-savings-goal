@@ -72,6 +72,22 @@ impl SavingsGoalContract {
         target.saturating_sub(balance)
     }
 
+    pub fn increase_target(env: Env, additional: i128) {
+        if additional <= 0 {
+            panic!("additional must be positive");
+        }
+
+        let target: i128 = env
+            .storage()
+            .instance()
+            .get(&DataKey::Target)
+            .unwrap_or(0);
+
+        env.storage()
+            .instance()
+            .set(&DataKey::Target, &(target + additional));
+    }
+
     pub fn withdraw(env: Env) -> i128 {
 
         let target: i128 = env
