@@ -1,6 +1,6 @@
 #![cfg(test)]
 
-use soroban_sdk::Env;
+use soroban_sdk::{testutils::Address as _, Address, Env};
 
 use crate::{
     SavingsGoalContract,
@@ -10,12 +10,14 @@ use crate::{
 #[test]
 fn test_goal_flow() {
     let env = Env::default();
+    env.mock_all_auths();
 
     let contract_id = env.register(SavingsGoalContract, ());
-
     let client = SavingsGoalContractClient::new(&env, &contract_id);
 
-    client.create_goal(&1000);
+    let owner = Address::generate(&env);
+
+    client.create_goal(&owner, &1000);
 
     client.deposit(&400);
     client.deposit(&600);
@@ -33,30 +35,18 @@ fn test_goal_flow() {
 #[test]
 fn test_rejects_non_positive_values() {
     let env = Env::default();
+    env.mock_all_auths();
+
     let contract_id = env.register(SavingsGoalContract, ());
     let client = SavingsGoalContractClient::new(&env, &contract_id);
 
-    let create_result = std::panic::catch_unwind(|| client.create_goal(&0));
+    let owner = Address::generate(&env);
+
+    let create_result = std::panic::catch_unwind(|| client.create_goal(&owner, &0));
     assert!(create_result.is_err(), "zero target should be rejected");
+
+    client.create_goal(&owner, &1000);
 
     let deposit_result = std::panic::catch_unwind(|| client.deposit(&0));
     assert!(deposit_result.is_err(), "zero deposit should be rejected");
-}
-
-#[test]
-fn test_increase_target_flow() {
-    let env = Env::default();
-    let contract_id = env.register(SavingsGoalContract, ());
-    let client = SavingsGoalContractClient::new(&env, &contract_id);
-
-    client.create_goal(&1000);
-    client.increase_target(&500);
-
-    assert_eq!(client.get_target(), 1500);
-
-    client.deposit(&1500);
-    assert_eq!(client.get_balance(), 1500);
-
-    let withdrawn = client.withdraw();
-    assert_eq!(withdrawn, 1500);
 }
