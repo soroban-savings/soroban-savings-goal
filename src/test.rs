@@ -81,3 +81,22 @@ fn test_multiple_goals_per_owner_are_independent() {
     let withdrawn = client.withdraw(&owner, &emergency);
     assert_eq!(withdrawn, 500);
 }
+
+#[test]
+fn test_events_are_emitted_for_goal_lifecycle() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let contract_id = env.register(SavingsGoalContract, ());
+    let client = SavingsGoalContractClient::new(&env, &contract_id);
+
+    let owner = Address::generate(&env);
+    let goal_name = Symbol::new(&env, "vacation");
+
+    client.create_goal(&owner, &goal_name, &1000);
+    client.deposit(&owner, &goal_name, &1000);
+    client.withdraw(&owner, &goal_name);
+
+    // One event per lifecycle action: created, deposited, withdrawn.
+    assert_eq!(env.events().all().len(), 3);
+}

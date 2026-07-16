@@ -62,6 +62,11 @@ impl SavingsGoalContract {
 
         env.storage().instance().set(&key, &goal);
 
+        env.events().publish(
+            (Symbol::new(&env, "goal_created"), owner.clone()),
+            (goal_name.clone(), target),
+        );
+
         Ok(())
     }
 
@@ -87,6 +92,11 @@ impl SavingsGoalContract {
 
         goal.balance += amount;
         env.storage().instance().set(&key, &goal);
+
+        env.events().publish(
+            (Symbol::new(&env, "deposited"), owner.clone()),
+            (goal_name.clone(), amount),
+        );
 
         Ok(())
     }
@@ -131,6 +141,11 @@ impl SavingsGoalContract {
         let withdrawn = goal.balance;
 
         env.storage().instance().remove(&key);
+
+        env.events().publish(
+            (Symbol::new(&env, "withdrawn"), owner.clone()),
+            (goal_name.clone(), withdrawn),
+        );
 
         Ok(withdrawn)
     }
