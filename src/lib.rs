@@ -15,6 +15,8 @@ pub enum Error {
     GoalAlreadyExists = 4,
     GoalNotFound = 5,
     Unauthorized = 6,
+    InvalidDeadline = 7,
+    NothingToWithdraw = 8,
 }
 
 #[derive(Clone)]
@@ -23,12 +25,17 @@ pub struct GoalData {
     pub target: i128,
     pub balance: i128,
     pub created_at: u64,
+    pub deadline: Option<u64>,
 }
 
 #[contracttype]
 pub enum DataKey {
     Goal(Address, Symbol),
 }
+
+/// Percentage of the balance forfeited when a goal is exited early via
+/// `emergency_withdraw` instead of waiting to hit the target.
+const EMERGENCY_WITHDRAW_PENALTY_PCT: i128 = 10;
 
 #[contract]
 pub struct SavingsGoalContract;
@@ -41,11 +48,18 @@ impl SavingsGoalContract {
         owner: Address,
         goal_name: Symbol,
         target: i128,
+        deadline: Option<u64>,
     ) -> Result<(), Error> {
         owner.require_auth();
 
         if target <= 0 {
             return Err(Error::InvalidTarget);
+        }
+
+        if let Some(d) = deadline {
+            if d <= env.ledger().timestamp() {
+                return Err(Error::InvalidDeadline);
+            }
         }
 
         let key = DataKey::Goal(owner.clone(), goal_name.clone());
@@ -58,6 +72,7 @@ impl SavingsGoalContract {
             target,
             balance: 0,
             created_at: env.ledger().timestamp(),
+            deadline,
         };
 
         env.storage().instance().set(&key, &goal);
@@ -113,6 +128,12 @@ impl SavingsGoalContract {
         Ok(goal.target)
     }
 
+    pub fn get_deadline(env: Env, owner: Address, goal_name: Symbol) -> Result<Option<u64>, Error> {
+        let key = DataKey::Goal(owner, goal_name);
+        let goal: GoalData = env.storage().instance().get(&key).ok_or(Error::GoalNotFound)?;
+        Ok(goal.deadline)
+    }
+
     pub fn get_remaining_to_target(
         env: Env,
         owner: Address,
@@ -148,6 +169,37 @@ impl SavingsGoalContract {
         );
 
         Ok(withdrawn)
+    }
+
+    /// Lets the owner exit a goal before the target balance is reached, at
+    /// the cost of a fixed penalty on the withdrawn balance. Useful for
+    /// genuine emergencies without needing to wait out the goal.
+    pub fn emergency_withdraw(env: Env, owner: Address, goal_name: Symbol) -> Result<i128, Error> {
+        owner.require_auth();
+
+        let key = DataKey::Goal(owner.clone(), goal_name.clone());
+
+        let goal: GoalData = env
+            .storage()
+            .instance()
+            .get(&key)
+            .ok_or(Error::GoalNotFound)?;
+
+        if goal.balance <= 0 {
+            return Err(Error::NothingToWithdraw);
+        }
+
+        let penalty = goal.balance * EMERGENCY_WITHDRAW_PENALTY_PCT / 100;
+        let payout = goal.balance - penalty;
+
+        env.storage().instance().remove(&key);
+
+        env.events().publish(
+            (Symbol::new(&env, "emergency_withdrawn"), owner.clone()),
+            (goal_name.clone(), payout, penalty),
+        );
+
+        Ok(payout)
     }
 }
 
