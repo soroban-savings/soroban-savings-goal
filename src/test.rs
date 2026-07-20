@@ -170,3 +170,21 @@ fn test_emergency_withdraw_rejects_zero_balance() {
     let result = client.try_emergency_withdraw(&owner, &goal_name);
     assert_eq!(result, Err(Ok(Error::NothingToWithdraw)));
 }
+
+#[test]
+#[should_panic]
+fn test_actions_without_authorization_panic() {
+    let env = Env::default();
+    // Deliberately no env.mock_all_auths() here — this proves
+    // require_auth() actually blocks calls that lack a valid signature.
+
+    let contract_id = env.register(SavingsGoalContract, ());
+    let client = SavingsGoalContractClient::new(&env, &contract_id);
+
+    let owner = Address::generate(&env);
+    let goal_name = Symbol::new(&env, "vacation");
+
+    // Should panic: create_goal requires owner.require_auth(), and no
+    // authorization has been provided or mocked for this invocation.
+    client.create_goal(&owner, &goal_name, &1000, &None);
+}
