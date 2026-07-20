@@ -1,6 +1,8 @@
 #![cfg(test)]
 
-use soroban_sdk::{testutils::Address as _, testutils::Ledger as _, Address, Env, Symbol};
+use soroban_sdk::{
+    testutils::Address as _, testutils::Events as _, testutils::Ledger as _, Address, Env, Symbol,
+};
 
 use crate::{
     Error,
