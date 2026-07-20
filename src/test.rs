@@ -95,10 +95,14 @@ fn test_events_are_emitted_for_goal_lifecycle() {
     let goal_name = Symbol::new(&env, "vacation");
 
     client.create_goal(&owner, &goal_name, &1000, &None);
-    client.deposit(&owner, &goal_name, &1000);
-    client.withdraw(&owner, &goal_name);
+    assert_eq!(env.events().all().len(), 1, "expected 1 event after create_goal");
 
-    assert_eq!(env.events().all().len(), 3);
+    client.deposit(&owner, &goal_name, &1000);
+    assert_eq!(env.events().all().len(), 1, "expected 1 event after deposit");
+
+    let withdrawn = client.withdraw(&owner, &goal_name);
+    assert_eq!(withdrawn, 1000);
+    assert_eq!(env.events().all().len(), 1, "expected 1 event after withdraw");
 }
 
 #[test]
